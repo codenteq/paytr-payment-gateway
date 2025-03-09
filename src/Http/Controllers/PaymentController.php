@@ -3,7 +3,6 @@
 namespace Webkul\PayTR\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Webkul\Checkout\Facades\Cart;
 use Webkul\Customer\Models\Customer;
 use Webkul\Sales\Models\OrderPayment;
