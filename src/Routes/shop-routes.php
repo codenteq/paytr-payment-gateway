@@ -14,5 +14,6 @@ Route::group(['middleware' => ['web']], function () {
 
     Route::get('/paytr-cancel', [PaymentController::class, 'failure'])->name('paytr.cancel');
 
-    Route::post('/paytr-callback', [PaymentController::class, 'callback'])->name('paytr.callback');
+    Route::post('/paytr-callback', [PaymentController::class, 'callback'])->name('paytr.callback')
+        ->withoutMiddleware(\App\Http\Middleware\VerifyCsrfToken::class);
 });
