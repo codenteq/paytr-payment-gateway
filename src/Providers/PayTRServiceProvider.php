@@ -18,6 +18,8 @@ class PayTRServiceProvider extends ServiceProvider
         $this->loadTranslationsFrom(__DIR__.'/../Resources/lang', 'paytr');
 
         $this->loadViewsFrom(__DIR__.'/../Resources/views', 'paytr');
+
+        $this->app->register(EventServiceProvider::class);
     }
 
     /**

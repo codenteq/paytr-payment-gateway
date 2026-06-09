@@ -5,6 +5,7 @@ namespace Webkul\PayTR\Http\Controllers;
 use Illuminate\Http\Request;
 use Webkul\Checkout\Facades\Cart;
 use Webkul\Customer\Models\Customer;
+use Webkul\Sales\Models\OrderPayment;
 use Webkul\Sales\Repositories\InvoiceRepository;
 use Webkul\Sales\Repositories\OrderRepository;
 use Webkul\Sales\Transformers\OrderResource;
@@ -46,7 +47,9 @@ class PaymentController extends Controller
 
         $payment_amount = $cart['grand_total'] * 100;
 
-        $merchant_oid = rand();
+        $merchant_oid = rand(100000, 999999);
+
+        session(['payment_transaction_id' => $merchant_oid]);
 
         $user_name = $cart['customer_first_name'] . ' ' . $cart['customer_last_name'];
 
@@ -54,7 +57,7 @@ class PaymentController extends Controller
 
         $user_phone = $user['phone'];
 
-        $merchant_ok_url = route('paytr.callback');
+        $merchant_ok_url = route('paytr.success');
 
         $merchant_fail_url = route('paytr.cancel');
 
@@ -66,7 +69,6 @@ class PaymentController extends Controller
                 $product['quantity']
             ];
         }
-
 
         $user_basket = base64_encode(json_encode($user_baskets));
 
@@ -82,9 +84,9 @@ class PaymentController extends Controller
 
         $timeout_limit = "30";
 
-        $debug_on = 0;
+        $debug_on = 1;
 
-        $test_mode = 0;
+        $test_mode = 1;
 
         $no_installment = 0;
 
@@ -122,21 +124,20 @@ class PaymentController extends Controller
         curl_setopt($ch, CURLOPT_POSTFIELDS, $post_vals);
         curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
         curl_setopt($ch, CURLOPT_TIMEOUT, 20);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
 
         $result = @curl_exec($ch);
 
-        if (curl_errno($ch))
-            die("PAYTR IFRAME connection error. err:" . curl_error($ch));
+        if(curl_errno($ch))
+            die("PAYTR IFRAME connection error. err:".curl_error($ch));
 
         curl_close($ch);
 
-        $result = json_decode($result, 1);
+        $result=json_decode($result,1);
 
-        if ($result['status'] == 'success')
-            $token = $result['token'];
+        if($result['status']=='success')
+            $token=$result['token'];
         else
-            die("PAYTR IFRAME failed. reason:" . $result['reason']);
+            die("PAYTR IFRAME failed. reason:".$result['reason']);
 
         return view('paytr::iframe', compact('token'));
     }
@@ -176,6 +177,8 @@ class PaymentController extends Controller
 
         $order = $this->orderRepository->create($data);
 
+        $this->savePaymentTransactionId($order['id']);
+
         if ($order->canInvoice()) {
             $this->invoiceRepository->create($this->prepareInvoiceData($order));
         }
@@ -213,5 +216,13 @@ class PaymentController extends Controller
         }
 
         return $invoiceData;
+    }
+
+    /**
+     * Saves the payment transaction ID to the database.
+     */
+    protected function savePaymentTransactionId(int $orderId): void
+    {
+        OrderPayment::where('order_id', $orderId)->update(['additional' => json_encode(['order_id' => session('payment_transaction_id')])]);
     }
 }
